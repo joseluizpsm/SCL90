@@ -1,0 +1,398 @@
+#!/usr/bin/env python3
+"""
+SCL-90 Command Line Test Application
+A tool for administering the SCL-90 psychological assessment test
+"""
+
+import json
+import os
+import datetime
+from typing import Dict, List, Optional
+import argparse
+
+
+class SCL90Test:
+    def __init__(self, data_file: str = "scl90_data.json"):
+        self.data_file = data_file
+        self.results = self.load_data()
+        
+        # SCL-90 dimension mapping (question numbers for each dimension)
+        # You'll need to adjust these based on your actual question set
+        self.dimensions = {
+            "somatization": [1, 4, 12, 27, 40, 42, 48, 49, 52, 53, 56, 58],
+            "obsessive_compulsive": [3, 9, 10, 28, 38, 45, 46, 51, 55, 65],
+            "interpersonal_sensitivity": [6, 21, 34, 36, 37, 41, 61, 69, 73],
+            "depression": [5, 14, 15, 20, 22, 26, 29, 30, 31, 32, 54, 71, 79],
+            "anxiety": [2, 17, 23, 33, 39, 57, 72, 78, 80, 86],
+            "hostility": [11, 24, 63, 67, 74, 81],
+            "phobic_anxiety": [13, 25, 47, 50, 70, 75, 82],
+            "paranoid_ideation": [8, 18, 43, 68, 76, 83],
+            "psychoticism": [7, 16, 35, 62, 77, 84, 85, 87, 88, 90]
+        }
+        
+        # Additional items for global indices
+        self.additional_items = [19, 44, 59, 60, 64, 66, 89]
+    
+    def load_data(self) -> List[Dict]:
+        """Load existing test results from JSON file"""
+        if os.path.exists(self.data_file):
+            try:
+                with open(self.data_file, 'r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                return []
+        return []
+    
+    def save_data(self):
+        """Save test results to JSON file"""
+        with open(self.data_file, 'w') as f:
+            json.dump(self.results, f, indent=2, default=str)
+    
+    def administer_test(self, participant_id: str) -> Dict:
+        """Administer the SCL-90 test"""
+        print(f"\n=== SCL-90 Test for Participant: {participant_id} ===")
+        print("Avalie cada item numa escala de 0-4:")
+        print("0 = De modo algum")
+        print("1 = Um pouco") 
+        print("2 = Moderadamente")
+        print("3 = Bastante")
+        print("4 = Extremamente")
+        print("\nPressione Enter depois de cada resposta. Digite 'quit' para sair.\n")
+        
+        # SCL-90 questions in Portuguese
+        questions = {
+            1: "Dores de Cabeça",
+            2: "Nervosismo ou stress interior",
+            3: "Pensamentos ou palavras indesejáveis que não o largam",
+            4: "Tonturas ou desmaios",
+            5: "Perda de interesse ou do prazer sexual",
+            6: "Sentir-se criticado pelos outros",
+            7: "Ideia de que alguém consegue controlar os seus pensamentos",
+            8: "Sentir que são os outros os culpados pela maior parte dos seus problemas",
+            9: "Dificuldade em se lembrar das coisas",
+            10: "Preocupações acerca de estar desmazelado ou negligente",
+            11: "Sentir-se facilmente aborrecido ou irritado",
+            12: "Dores no coração ou no peito",
+            13: "Sentir medos de espaços abertos ou nas ruas",
+            14: "Sentir pouca energia ou sentir-se vagaroso",
+            15: "Pensamentos de acabar com vida",
+            16: "Ouvir vozes que os outros não ouvem",
+            17: "Tremores",
+            18: "Sentir que não se pode confiar na maior parte das pessoas",
+            19: "Pouco apetite",
+            20: "Chorar facilmente",
+            21: "Sentir-se envergonhado ou inquieto com o sexo oposto",
+            22: "Sensação de ter sido apanhado numa ratoeira",
+            23: "Assustar-se subitamente sem razão",
+            24: "Ter explosões emocionais que não consegue controlar sozinho",
+            25: "Medo de sair de casa sozinho",
+            26: "Culpar-se das coisas",
+            27: "Dores de barriga",
+            28: "Sentir-se bloqueado para fazer as coisas",
+            29: "Sentir-se solitário",
+            30: "Sentir-se melancólico",
+            31: "Aborrecer-se demasiado com as coisas",
+            32: "Não sentir interesse em nada",
+            33: "Sentir-se cheio de medo",
+            34: "Ficar facilmente ferido nos seus sentimentos",
+            35: "As outras pessoas tornarem-se sabedoras dos seus problemas íntimos",
+            36: "Sentir que os outros não o compreendem ou são antipáticos",
+            37: "Sentir que as pessoas não são amigas ou não gostam de si",
+            38: "Ter de fazer as coisas lentamente para que saiam bem",
+            39: "Sentir palpitações ou batimentos rápidos do coração",
+            40: "Náuseas ou indisposição no estômago",
+            41: "Sentir-se inferior aos outros",
+            42: "Dores no estômago",
+            43: "Sentir-se observado ou que os outros falam de si",
+            44: "Dificuldades em adormecer",
+            45: "Ter de verificar e voltar a verificar o que fez",
+            46: "Dificuldade em tomar decisões",
+            47: "Medo em andar de auto-carro, metro ou comboio",
+            48: "Dificuldade em respirar",
+            49: "Crises de calor ou frio",
+            50: "Ter de evitar certas coisa, lugares ou actividades porque elas o assustam",
+            51: "Fazer-se um vazio no seu espírito",
+            52: "Sentir um formigueiro ou partes do seu corpo entorpecidas",
+            53: "Sentir um nó na garganta",
+            54: "Sentir-se sem esperança para o futuro",
+            55: "Dificuldades em se concentrar",
+            56: "Sentir fraqueza em partes do seu corpo (cabeça e braços)",
+            57: "Sentir-se tenso ou ansioso",
+            58: "Sentir os braços e as pernas pesadas",
+            59: "Pensamentos de morte ou de morrer",
+            60: "Comer demais",
+            61: "Sentir-se inquieto quando as pessoas o observam ou falam de si",
+            62: "Ter pensamentos que não são os seus",
+            63: "Ter vontade de bater, injuriar ou prejudicar alguém",
+            64: "Acordar cedo",
+            65: "Ter que repetir as mesmas acções como o tocar ou lavar",
+            66: "Sono não repousante ou perturbado",
+            67: "Ter vontade de partir ou esmagar as coisas",
+            68: "Ter ideias ou crenças que os outros não partilham",
+            69: "Ser muito escrupuloso com os outros",
+            70: "Sentir-se inquieto no meio da multidão, tal como nas compras ou no cinema",
+            71: "Sentir tudo como um esforço",
+            72: "Momentos de terror ou pânico",
+            73: "Sentir-se desconfortável quando bebe ou come em público",
+            74: "Entrar facilmente em discussões",
+            75: "Sentir-se nervoso quando os outros o deixam sozinho",
+            76: "Os outros não dão o devido valor ao seu trabalho ou às suas capacidades",
+            77: "Sentir-se sozinho, mesmo quando está com outras pessoas",
+            78: "Sentir-se tão inquieto e que não pode estar parado",
+            79: "Sentir-se sem valor ou indigno",
+            80: "Sensação de que alguma coisa má lhe vai acontecer",
+            81: "Gritar ou atirar coisas",
+            82: "Ter medo de poder desmaiar em público",
+            83: "Ter a impressão de que as pessoas se aproveitariam de si se as deixasse",
+            84: "Ter pensamentos acerca de sexo que o aborrecem bastante",
+            85: "Ideias de que deve ser castigado pelos seus pecados",
+            86: "Pensamentos ou imagens assustadoras",
+            87: "Ideia de que está algo mal com o seu corpo",
+            88: "Nunca se sentir próximo das outras pessoas",
+            89: "Sentimentos de culpa",
+            90: "Ideia de que alguma coisa está mal na sua cabeça"
+        }
+        
+        responses = {}
+        
+        # Administer each question
+        for i in range(1, 91):
+            while True:
+                try:
+                    print(f"\n[{i}/90] {questions[i]}")
+                    response = input("Resposta (0-4): ").strip()
+                    
+                    if response.lower() == 'quit':
+                        print("Teste interrompido pelo utilizador.")
+                        return None
+                    
+                    score = int(response)
+                    if 0 <= score <= 4:
+                        responses[str(i)] = score
+                        break
+                    else:
+                        print("Por favor, insira um número entre 0 e 4.")
+                except ValueError:
+                    print("Por favor, insira um número válido (0-4).")
+        
+        # Create test result record
+        result = {
+            "participant_id": participant_id,
+            "timestamp": datetime.datetime.now().isoformat(),
+            "responses": responses,
+            "questions": questions,  # Store questions with responses
+            "scores": self.calculate_scores(responses)
+        }
+        
+        return result
+    
+    def calculate_scores(self, responses: Dict[str, int]) -> Dict:
+        """Calculate SCL-90 dimension scores and global indices"""
+        scores = {}
+        
+        # Calculate dimension scores (mean of items in each dimension)
+        for dimension, items in self.dimensions.items():
+            dimension_scores = [responses.get(str(item), 0) for item in items]
+            scores[dimension] = {
+                "raw_score": sum(dimension_scores),
+                "mean_score": sum(dimension_scores) / len(dimension_scores),
+                "item_count": len(dimension_scores)
+            }
+        
+        # Calculate Global Severity Index (GSI)
+        all_items = []
+        for items in self.dimensions.values():
+            all_items.extend(items)
+        all_items.extend(self.additional_items)
+        
+        total_score = sum(responses.get(str(item), 0) for item in all_items)
+        gsi = total_score / len(all_items)
+        
+        # Calculate Positive Symptom Total (PST) - number of items > 0
+        pst = sum(1 for item in all_items if responses.get(str(item), 0) > 0)
+        
+        # Calculate Positive Symptom Distress Index (PSDI)
+        psdi = total_score / pst if pst > 0 else 0
+        
+        scores["global_indices"] = {
+            "gsi": round(gsi, 3),
+            "pst": pst,
+            "psdi": round(psdi, 3)
+        }
+        
+        return scores
+    
+    def save_result(self, result: Dict):
+        """Save a test result"""
+        if result:
+            self.results.append(result)
+            self.save_data()
+            print(f"\nTest results saved for {result['participant_id']}")
+    
+    def display_results(self, result: Dict):
+        """Display formatted test results"""
+        print(f"\n=== Resultados SCL-90 para {result['participant_id']} ===")
+        print(f"Data do Teste: {result['timestamp']}")
+        print("\nPontuações das Dimensões:")
+        print("-" * 50)
+        
+        dimension_names = {
+            "somatization": "Somatização",
+            "obsessive_compulsive": "Obsessivo-Compulsivo",
+            "interpersonal_sensitivity": "Sensibilidade Interpessoal",
+            "depression": "Depressão",
+            "anxiety": "Ansiedade",
+            "hostility": "Hostilidade",
+            "phobic_anxiety": "Ansiedade Fóbica",
+            "paranoid_ideation": "Ideação Paranóide",
+            "psychoticism": "Psicoticismo"
+        }
+        
+        for dimension, scores in result['scores'].items():
+            if dimension != 'global_indices':
+                display_name = dimension_names.get(dimension, dimension)
+                print(f"{display_name:<25} "
+                      f"Total: {scores['raw_score']:>3} "
+                      f"Média: {scores['mean_score']:>5.2f}")
+        
+        print("\nÍndices Globais:")
+        print("-" * 30)
+        global_indices = result['scores']['global_indices']
+        print(f"IGS (Índice Geral de Severidade): {global_indices['gsi']}")
+        print(f"TSP (Total de Sintomas Positivos): {global_indices['pst']}")
+        print(f"IDSP (Índice de Distress de Sintomas Positivos): {global_indices['psdi']}")
+        
+        # Add interpretation guidelines
+        print(f"\nInterpretação Clínica:")
+        print("-" * 20)
+        gsi = global_indices['gsi']
+        if gsi >= 1.7:
+            print("IGS: Nível elevado de distress psicológico")
+        elif gsi >= 1.0:
+            print("IGS: Nível moderado de distress psicológico")
+        else:
+            print("IGS: Nível baixo de distress psicológico")
+    def list_participants(self):
+        """List all participants with test dates"""
+        if not self.results:
+            print("Nenhum resultado de teste encontrado.")
+            return
+        
+        print("\n=== Todos os Resultados dos Testes ===")
+        print(f"{'ID Participante':<20} {'Data do Teste':<20} {'Pontuação IGS'}")
+        print("-" * 65)
+        
+        for result in self.results:
+            gsi = result['scores']['global_indices']['gsi']
+            timestamp = result['timestamp'][:19].replace('T', ' ')
+            print(f"{result['participant_id']:<20} {timestamp:<20} {gsi}")
+    
+    def compare_results(self, participant_id: str):
+        """Compare multiple test results for the same participant"""
+        participant_results = [r for r in self.results if r['participant_id'] == participant_id]
+        
+        if len(participant_results) < 2:
+            print(f"São necessários pelo menos 2 resultados de teste para {participant_id} para comparar.")
+            return
+        
+        print(f"\n=== Comparação para {participant_id} ===")
+        
+        # Sort by timestamp
+        participant_results.sort(key=lambda x: x['timestamp'])
+        
+        print(f"{'Data do Teste':<20} {'IGS':<8} {'TSP':<6} {'IDSP'}")
+        print("-" * 50)
+        
+        for result in participant_results:
+            global_indices = result['scores']['global_indices']
+            timestamp = result['timestamp'][:19].replace('T', ' ')
+            print(f"{timestamp:<20} "
+                  f"{global_indices['gsi']:<8} "
+                  f"{global_indices['pst']:<6} "
+                  f"{global_indices['psdi']}")
+        
+        # Show trend
+        first_gsi = participant_results[0]['scores']['global_indices']['gsi']
+        last_gsi = participant_results[-1]['scores']['global_indices']['gsi']
+        change = last_gsi - first_gsi
+        
+        trend = "melhoria" if change < 0 else "aumento"
+        print(f"\nAlteração no IGS: {change:+.3f} ({trend})")
+    
+    def export_data(self, filename: str):
+        """Export all data to a specified JSON file"""
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(self.results, f, indent=2, default=str, ensure_ascii=False)
+            print(f"Dados exportados para {filename}")
+        except Exception as e:
+            print(f"Erro ao exportar dados: {e}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="SCL-90 Test Administration Tool")
+    parser.add_argument("--data-file", default="scl90_data.json", 
+                       help="JSON file to store results")
+    
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # Test command
+    test_parser = subparsers.add_parser("test", help="Administer a new test")
+    test_parser.add_argument("participant_id", help="Participant identifier")
+    
+    # List command
+    subparsers.add_parser("list", help="List all test results")
+    
+    # View command
+    view_parser = subparsers.add_parser("view", help="View specific test result")
+    view_parser.add_argument("participant_id", help="Participant identifier")
+    view_parser.add_argument("--latest", action="store_true", 
+                           help="Show only the latest result")
+    
+    # Compare command
+    compare_parser = subparsers.add_parser("compare", help="Compare results for a participant")
+    compare_parser.add_argument("participant_id", help="Participant identifier")
+    
+    # Export command
+    export_parser = subparsers.add_parser("export", help="Export data to file")
+    export_parser.add_argument("filename", help="Output filename")
+    
+    args = parser.parse_args()
+    
+    # Initialize the test application
+    app = SCL90Test(args.data_file)
+    
+    if args.command == "test":
+        result = app.administer_test(args.participant_id)
+        if result:
+            app.display_results(result)
+            app.save_result(result)
+    
+    elif args.command == "list":
+        app.list_participants()
+    
+    elif args.command == "view":
+        participant_results = [r for r in app.results if r['participant_id'] == args.participant_id]
+        if not participant_results:
+            print(f"No results found for {args.participant_id}")
+        else:
+            if args.latest:
+                result = max(participant_results, key=lambda x: x['timestamp'])
+                app.display_results(result)
+            else:
+                for result in participant_results:
+                    app.display_results(result)
+                    print("\n" + "="*60 + "\n")
+    
+    elif args.command == "compare":
+        app.compare_results(args.participant_id)
+    
+    elif args.command == "export":
+        app.export_data(args.filename)
+    
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
